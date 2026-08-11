@@ -11,9 +11,8 @@ import { useSelector } from 'react-redux';
 
 function FavoriteAuth({ children, onAuthStatusChange }) {
   const navigation = useNavigation();
-  
 
-  const { isAuthenticated, loading } = useSelector(state => state.user);
+  const { isAuthenticated } = useSelector(state => state.user);
 
   useEffect(() => {
     if (onAuthStatusChange) {
@@ -25,24 +24,24 @@ function FavoriteAuth({ children, onAuthStatusChange }) {
     navigation.navigate('Login');
   };
   
- 
-  
   if (!isAuthenticated) {
     return (
-      <View style={styles.authScreenContainer}>
-        <View style={styles.authContainer}>
-          <Ionicons name="log-in-outline" size={80} color="#FF9E58" style={{margin:"auto"}} />
-          <Text style={styles.authTitle}>Требуется авторизация</Text>
-          <Text style={styles.authText}>
-            Войдите в аккаунт, чтобы просматривать избранные товары
-          </Text>
-          <TouchableOpacity 
-            style={styles.authButton}
-            onPress={handleLogin}
-          >
-            <Text style={styles.authButtonText}>Войти</Text>
-          </TouchableOpacity>
+      <View style={styles.container}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="heart-outline" size={56} color="#FF9E58" />
         </View>
+        <Text style={styles.title}>Требуется авторизация</Text>
+        <Text style={styles.text}>
+          Войдите в аккаунт, чтобы просматривать и управлять избранными товарами
+        </Text>
+        <TouchableOpacity 
+          style={styles.button}
+          onPress={handleLogin}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="log-in-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.buttonText}>Войти в аккаунт</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -51,42 +50,54 @@ function FavoriteAuth({ children, onAuthStatusChange }) {
 }
 
 const styles = StyleSheet.create({
-
-  authScreenContainer:{ 
-    marginTop:100, 
-    paddingHorizontal: 20,
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    backgroundColor: '#fff',
   },
-  authTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginTop: 20,
+  iconCircle: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: '#FFF3E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#222',
     marginBottom: 10,
     textAlign: 'center',
   },
-  authText: {
-    fontSize: 16,
-    color: '#777777',
+  text: {
+    fontSize: 14,
+    color: '#888',
     textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 22,
+    marginBottom: 32,
+    lineHeight: 21,
   },
-  authButton: {
-    width: '100%',
-    maxWidth: 300,
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FF9E58',
-    
-    paddingVertical: 14, 
-    margin:'auto',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
     borderRadius: 12,
     shadowColor: '#FF9E58',
-    
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  authButtonText: {
+  buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '900',
-    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

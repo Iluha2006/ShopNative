@@ -7,6 +7,7 @@ import {
   Image,
   Alert,
   FlatList,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -15,13 +16,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { 
   fetchFavorites, 
   removeFromFavorites,
-
 } from "../../store/Favorite";
 import { checkAuth } from "../../store/Auth"; 
 import FavoriteAuth from './FavoriteCheckAuth';
 
 const GAP = 15;
 const PADDING = 15;
+
+function formatPrice(price) {
+  const num = parseInt(price, 10);
+  return isNaN(num) ? 0 : num.toLocaleString('ru-RU');
+}
 
 function FavoriteStore() {  
   const dispatch = useDispatch();
@@ -30,7 +35,7 @@ function FavoriteStore() {
   const numColumns = 2;
   const cardWidth = (width - PADDING * 2 - GAP) / numColumns;
   
-  const { favorites } = useSelector(state => state.favorite);
+  const { favorites, loading } = useSelector(state => state.favorite);
   const { isAuthenticated } = useSelector(state => state.user);
   
   useEffect(() => {
@@ -64,7 +69,6 @@ function FavoriteStore() {
           style: 'destructive',
           onPress: async () => {
             await dispatch(removeFromFavorites(productId));
-            Alert.alert('Успешно', 'Товар удален из избранного');
           },
         },
       ]
@@ -74,36 +78,31 @@ function FavoriteStore() {
   const renderEmptyFavorites = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIcon}>
-        <Ionicons name="heart-outline" size={64} color="#FF9E58" />
+        <Ionicons name="heart-outline" size={56} color="#FF9E58" />
       </View>
-      <Text style={styles.emptyTitle}>
-        {isAuthenticated ? 'В избранном пока пусто' : 'Требуется авторизация'}
-      </Text>
+      <Text style={styles.emptyTitle}>В избранном пока пусто</Text>
       <Text style={styles.emptyText}>
-        {isAuthenticated 
-          ? 'Нажимайте на сердечко у товаров, чтобы сохранить их здесь'
-          : 'Войдите в аккаунт, чтобы видеть избранные товары'
-        }
+        Нажимайте на сердечко у товаров, чтобы сохранять их здесь и возвращаться к покупке
       </Text>
       <TouchableOpacity 
         style={styles.browseButton}
-        onPress={() => navigation.navigate(isAuthenticated ? 'Home' : 'Login')}
+        onPress={() => navigation.navigate('Home')}
+        activeOpacity={0.85}
       >
         <Ionicons 
-          name={isAuthenticated ? 'bag-handle-outline' : 'log-in-outline'} 
+          name="bag-handle-outline" 
           size={20} 
           color="#fff" 
           style={{ marginRight: 8 }} 
         />
-        <Text style={styles.browseButtonText}>
-          {isAuthenticated ? 'Перейти к товарам' : 'Войти в аккаунт'}
-        </Text>
+        <Text style={styles.browseButtonText}>Перейти к товарам</Text>
       </TouchableOpacity>
     </View>
   );
 
   const renderFavoriteCard = ({ item }) => {
     const product = item.product || item;
+    const price = formatPrice(product.price);
   
     return (
       <TouchableOpacity
@@ -130,8 +129,9 @@ function FavoriteStore() {
               e.stopPropagation(); 
               handleRemoveFavorite(product.id);
             }}
+            activeOpacity={0.8}
           >
-            <Ionicons name="heart" size={16} color="#FF4444" />
+            <Ionicons name="heart" size={15} color="#FF4444" />
           </TouchableOpacity>
         </View>
   
@@ -139,14 +139,37 @@ function FavoriteStore() {
           <Text style={styles.productName} numberOfLines={2}>
             {product.name}
           </Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.productPrice}>
-              {product.price ? parseInt(product.price) : 0} ₽
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
-          </View>
+          <Text style={styles.productPrice}>{price} ₽</Text>
         </View>
       </TouchableOpacity>
+    );
+  };
+
+  const renderContent = () => {
+    if (loading && favorites.length === 0) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#FF9E58" />
+          <Text style={styles.centerText}>Загрузка избранного...</Text>
+        </View>
+      );
+    }
+
+    if (favorites.length === 0) {
+      return <View style={styles.center}>{renderEmptyFavorites()}</View>;
+    }
+
+    return (
+      <FlatList
+        key={`fav-grid-${numColumns}`}
+        data={favorites}
+        renderItem={renderFavoriteCard}
+        keyExtractor={(item, index) => (item?.product_id || item?.id || index).toString()}
+        numColumns={numColumns}
+        columnWrapperStyle={styles.columnWrapper}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
     );
   };
 
@@ -154,31 +177,19 @@ function FavoriteStore() {
     <FavoriteAuth>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Избранное</Text>
-          {isAuthenticated && favorites.length > 0 && (
-            <Text style={styles.headerCount}>
-              {favorites.length} {favorites.length === 1 ? 'товар' : 
-                favorites.length > 1 && favorites.length < 5 ? 'товара' : 'товаров'}
+          <View>
+            <Text style={styles.headerTitle}>Избранное</Text>
+            <Text style={styles.headerSubtitle}>
+              Сохранённые товары в вашем списке желаний
             </Text>
+          </View>
+          {isAuthenticated && favorites.length > 0 && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{favorites.length}</Text>
+            </View>
           )}
         </View>
-        
-        {!isAuthenticated || favorites.length === 0 ? (
-          <View style={styles.emptyWrapper}>
-            {renderEmptyFavorites()}
-          </View>
-        ) : (
-          <FlatList
-            key={`fav-grid-${numColumns}`}
-            data={favorites}
-            renderItem={renderFavoriteCard}
-            keyExtractor={(item, index) => (item?.product_id || item?.id || index).toString()}
-            numColumns={numColumns}
-            columnWrapperStyle={styles.columnWrapper}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
+        {renderContent()}
       </View>
     </FavoriteAuth>
   )
@@ -188,27 +199,51 @@ function FavoriteStore() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#fff',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  centerText: {
+    marginTop: 10,
+    color: '#888',
+    fontSize: 14,
   },
   header: {
     paddingHorizontal: PADDING,
     paddingTop: 20,
     paddingBottom: 12,
-    backgroundColor: '#F7F7F7',
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     color: '#222',
     letterSpacing: 0.3,
   },
-  headerCount: {
-    fontSize: 14,
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 2,
+  },
+  countBadge: {
+    minWidth: 32,
+    height: 32,
+    borderRadius: 16,
+    paddingHorizontal: 9,
+    backgroundColor: '#FFF3E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countBadgeText: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#FF9E58',
-    fontWeight: '600',
   },
   listContent: {
     paddingHorizontal: PADDING,
@@ -219,10 +254,8 @@ const styles = StyleSheet.create({
     marginBottom: GAP,
   },
   card: {
-   
-   
-    backgroundColor:"#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -247,9 +280,9 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 14,
-    width: 28,
-    height: 28,
+    borderRadius: 16,
+    width: 30,
+    height: 30,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 2,
@@ -269,22 +302,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     minHeight: 36,
   },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   productPrice: {
     fontSize: 16,
     fontWeight: '800',
     color: '#FF9E58',
-  },
-
-  emptyWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   emptyContainer: {
     alignItems: 'center',
