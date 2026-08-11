@@ -23,9 +23,7 @@ class FavoriteController extends Controller
         }
 
         $favorites = Favorite::where('user_id', $user->id)
-            ->with(['product' => function($query) {
-                $query->with('images');
-            }])
+            ->with('product')
             ->get();
 
         return response()->json([

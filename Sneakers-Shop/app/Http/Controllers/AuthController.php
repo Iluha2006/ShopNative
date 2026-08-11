@@ -54,9 +54,14 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request)
     {
-
-
             $user = User::with('profile')->where('email', $request->email)->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Неверный email или пароль',
+                ], 401);
+            }
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
