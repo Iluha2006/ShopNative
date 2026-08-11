@@ -9,17 +9,20 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import axios from 'axios';
+import * as WebBrowser from 'expo-web-browser';
 import { useDispatch, useSelector } from 'react-redux';
-import { useStripe } from './stripe';
 import { createPayment, clearCurrentPayment } from '../../store/Payment';
 import { clearCart } from '../../store/Cart';
+import { getAuthHeaders } from '../../store/AuthorizationCheck';
+import { API_URL } from '../../config/api';
 
 const MakingProduct = ({ navigation }) => {
   const dispatch = useDispatch();
   const { cartItems } = useSelector((state) => state.cart);
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [total, setTotal] = useState(0);
-  const { loading, error} = useSelector((state) => state.payment);
+  const [paying, setPaying] = useState(false);
+  const { error } = useSelector((state) => state.payment);
   useEffect(() => {
     const sum = cartItems.reduce((acc, item) => {
       return acc + (parseFloat(item.product?.price || 0) * (item.quantity || 1));
@@ -34,36 +37,41 @@ const MakingProduct = ({ navigation }) => {
       return;
     }
 
-
     const item = cartItems[0];
     try {
-    
+      setPaying(true);
+
       const paymentData = await dispatch(
-        createPayment(item.product.id, item.quantity, item.size)
+        createPayment(item.product?.id, item.quantity, item.size)
       );
 
-      const { error: initError } = await initPaymentSheet({
-        merchantDisplayName: 'Ваш магазин',
-        paymentIntentClientSecret: paymentData.client_secret,
-      });
+      const paymentUrl = paymentData.url;
+      if (!paymentUrl) {
+        Alert.alert('Ошибка', 'Не удалось получить ссылку на оплату');
+        return;
+      }
 
-      if (initError) throw initError;
+      await WebBrowser.openBrowserAsync(paymentUrl);
 
+      const headers = await getAuthHeaders();
+      const check = await axios.get(
+        `${API_URL}/payment/success?session_id=${paymentData.session_id}`,
+        { headers }
+      );
 
-      const { error: paymentError } = await presentPaymentSheet();
-
-      if (paymentError) {
-        if (paymentError.code !== 'Canceled') {
-          Alert.alert('Ошибка', paymentError.message || 'Не удалось завершить платёж');
-        }
-      } else {
-        Alert.alert('Успех', 'Платёж обрабатывается.');
+      if (check.data.paid) {
+        Alert.alert('Успех', 'Оплата прошла успешно!');
         dispatch(clearCart());
         dispatch(clearCurrentPayment());
-        navigation.goBack(); 
+        navigation.goBack();
+      } else {
+        Alert.alert('Оплата не завершена', 'Вы можете повторить попытку оплаты');
       }
     } catch (err) {
       console.error('Payment failed:', err);
+      Alert.alert('Ошибка', err.response?.data?.error || 'Не удалось провести оплату');
+    } finally {
+      setPaying(false);
     }
   };
   const renderCartItem = ({ item }) => {
@@ -114,11 +122,11 @@ const MakingProduct = ({ navigation }) => {
           {error && <Text style={styles.errorText}>{error}</Text>}
 
           <TouchableOpacity
-            style={[styles.payButton, (loading || cartItems.length === 0) && styles.disabledButton]}
+            style={[styles.payButton, (paying || cartItems.length === 0) && styles.disabledButton]}
             onPress={handlePay}
-            disabled={loading || cartItems.length === 0}
+            disabled={paying || cartItems.length === 0}
           >
-            {loading ? (
+            {paying ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.payButtonText}>Оплатить</Text>

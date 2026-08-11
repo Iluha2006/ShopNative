@@ -61,6 +61,37 @@ class PaymentServices
     ];
 }
 
+    public function createCheckoutSession(Order $order, User $user): Session
+    {
+        $product = $order->product;
+
+        $session = Session::create([
+            'payment_method_types' => ['card'],
+            'mode' => 'payment',
+            'line_items' => [[
+                'price_data' => [
+                    'currency' => 'rub',
+                    'product_data' => [
+                        'name' => $product->name,
+                        'description' => "Размер: {$order->selected_size}, кол-во: {$order->quantity}",
+                    ],
+                    'unit_amount' => $this->convertToCents($product->price),
+                ],
+                'quantity' => $order->quantity,
+            ]],
+            'metadata' => [
+                'order_id' => $order->id,
+                'user_id' => $user->id,
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+            ],
+            'success_url' => config('app.url') . '/api/payment/success?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => config('app.url') . '/api/payment/cancel?order_id=' . $order->id,
+        ]);
+
+        return $session;
+    }
+
     public function getSession(string $sessionId): Session
     {
         return Session::retrieve($sessionId);

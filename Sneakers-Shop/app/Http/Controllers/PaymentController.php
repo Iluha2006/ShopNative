@@ -41,10 +41,11 @@ class PaymentController extends Controller
         );
 
 
-        $paymentData = $this->paymentServices->createPaymentIntent($order, $user);
+        $checkout = $this->paymentServices->createCheckoutSession($order, $user);
 
         return response()->json([
-            'client_secret' => $paymentData['client_secret'],
+            'url' => $checkout->url,
+            'session_id' => $checkout->id,
             'order_id' => $order->id,
 
         ]);
@@ -57,16 +58,16 @@ class PaymentController extends Controller
         try {
             $session = $this->paymentServices->getSession($sessionId);
             $order = Order::find($session->metadata['order_id'] ?? null);
+            $paid = $session->payment_status === 'paid';
 
-            if ($order && $session->payment_status === 'success') {
+            if ($order && $paid) {
                 $order->markAsPaid();
-                return response()->json([
-                    'message' => 'Оплата прошла успешно',
-                    'order' => $order,
-                ]);
             }
 
-            return response()->json($sessionId);
+            return response()->json([
+                'paid' => $paid,
+                'order' => $order,
+            ]);
 
         } catch (\Exception $e) {
             return response()->json(['error' => 'Ошибка проверки платежа'], 500);

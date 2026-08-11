@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    backgroundColor: '#F4F4F4',
+   
   },
   productImage: {
     width: '100%',
