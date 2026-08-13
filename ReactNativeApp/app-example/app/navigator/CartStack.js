@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import ViewProduct from '../components/ProductShop/ViewingProduct';
 import CartProduct from '../screens/CartScreen';
 import MakingProduct from '../components/Orders/MakingOrder';
+import PaymentSuccess from '../components/Payment/PaymentSuccses';
 
 const Stack = createStackNavigator();
 
@@ -27,6 +28,11 @@ function CartNavigator() {
           headerShown: false,
         
         }}
+      />
+      <Stack.Screen
+        name="PaymentSuccess"
+        component={PaymentSuccess}
+        options={{ title: 'Оплата' }}
       />
       <Stack.Screen 
         name="ViewProduct" 

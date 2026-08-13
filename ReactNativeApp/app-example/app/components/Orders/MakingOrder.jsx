@@ -54,16 +54,26 @@ const MakingProduct = ({ navigation }) => {
       await WebBrowser.openBrowserAsync(paymentUrl);
 
       const headers = await getAuthHeaders();
-      const check = await axios.get(
-        `${API_URL}/payment/success?session_id=${paymentData.session_id}`,
-        { headers }
-      );
 
-      if (check.data.paid) {
-        Alert.alert('Успех', 'Оплата прошла успешно!');
+      let check = null;
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const res = await axios.get(
+          `${API_URL}/payment/success?session_id=${paymentData.session_id}`,
+          { headers }
+        );
+        check = res.data;
+        if (check?.paid) break;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+
+      if (check?.paid) {
         dispatch(clearCart());
         dispatch(clearCurrentPayment());
-        navigation.goBack();
+
+        navigation.replace('PaymentSuccess', {
+          orderId: check?.order?.id ?? paymentData?.order_id,
+          total,
+        });
       } else {
         Alert.alert('Оплата не завершена', 'Вы можете повторить попытку оплаты');
       }
@@ -76,7 +86,7 @@ const MakingProduct = ({ navigation }) => {
   };
   const renderCartItem = ({ item }) => {
     const product = item.product || {};
-    const imageUrl = item.selected_image || product.imageUrl; // ← используем selected_image, если есть
+    const imageUrl = item.selected_image || product.imageUrl; 
   
     return (
       <View style={styles.cartItem}>

@@ -142,7 +142,10 @@ export default function InfoProfile({ navigation }) {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.infoItem}>
+            <TouchableOpacity
+              style={styles.infoItem}
+              onPress={() => navigat.navigate('Orders')}
+            >
               <View style={styles.iconContainer}>
                 <Ionicons name="cart" size={24} color="#FF9E58" />
               </View>

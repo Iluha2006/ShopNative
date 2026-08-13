@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\OrderController;
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PaymentController;
@@ -12,8 +13,15 @@ use App\Http\Controllers\CartController;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payment/create', [PaymentController::class, 'createPayment']);
-    Route::get('/payment/success', [PaymentController::class, 'successPayment']);
-    Route::get('/payment/cancel', [PaymentController::class, 'cancelPayment']);
+});
+
+Route::get('/payment/success', [PaymentController::class, 'successPayment']);
+Route::get('/payment/cancel', [PaymentController::class, 'cancelPayment']);
+
+Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
+    Route::get('/', [OrderController::class, 'index']);
+    Route::get('/{id}', [OrderController::class, 'show'])
+        ->whereNumber('id');
 });
 
 Route::prefix('products')->group(function () {

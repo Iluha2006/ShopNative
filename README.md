@@ -154,7 +154,7 @@ cd Sneakers-Shop
 cp .env.example .env          # настроить подключение к БД и Stripe ключи
 composer install
 php artisan migrate --seed
-php artisan serve
+php artisan serve --host=0.0.0.0   # доступно для телефона/эмулятора по LAN
 ```
 
 ### Frontend
