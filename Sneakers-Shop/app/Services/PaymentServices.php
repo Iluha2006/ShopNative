@@ -21,18 +21,25 @@ class PaymentServices
         return (int)($amount * 100);
     }
 
-    public function createOrder(User $user, Product $product, int $quantity, $size): Order
+    public function createOrders(array $items, User $user): \Illuminate\Support\Collection
     {
-        $totalAmount = $product->price * $quantity;
+        $orders = collect();
 
-        return Order::create([
-            'user_id' => $user->id,
-            'product_id' => $product->id,
-            'quantity' => $quantity,
-            'selected_size' => $size,
-            'total_amount' => $totalAmount,
-            'status' => 'pending',
-        ]);
+        foreach ($items as $item) {
+            $product = Product::findOrFail($item['product_id']);
+            $totalAmount = $product->price * $item['quantity'];
+
+            $orders->push(Order::create([
+                'user_id' => $user->id,
+                'product_id' => $product->id,
+                'quantity' => $item['quantity'],
+                'selected_size' => $item['size'] ?? null,
+                'total_amount' => $totalAmount,
+                'status' => 'pending',
+            ]));
+        }
+
+        return $orders;
     }
 
 
@@ -61,14 +68,16 @@ class PaymentServices
     ];
 }
 
-    public function createCheckoutSession(Order $order, User $user): Session
+    public function createCheckoutSession($orders, User $user): Session
     {
-        $product = $order->product;
+        $orders = $orders instanceof \Illuminate\Support\Collection ? $orders : collect([$orders]);
 
-        $session = Session::create([
-            'payment_method_types' => ['card'],
-            'mode' => 'payment',
-            'line_items' => [[
+        $lineItems = [];
+
+        foreach ($orders as $order) {
+            $product = $order->product;
+
+            $lineItems[] = [
                 'price_data' => [
                     'currency' => 'rub',
                     'product_data' => [
@@ -78,15 +87,21 @@ class PaymentServices
                     'unit_amount' => $this->convertToCents($product->price),
                 ],
                 'quantity' => $order->quantity,
-            ]],
+            ];
+        }
+
+        $orderIds = $orders->pluck('id')->all();
+
+        $session = Session::create([
+            'payment_method_types' => ['card'],
+            'mode' => 'payment',
+            'line_items' => $lineItems,
             'metadata' => [
-                'order_id' => $order->id,
+                'order_ids' => implode(',', $orderIds),
                 'user_id' => $user->id,
-                'product_id' => $product->id,
-                'product_name' => $product->name,
             ],
             'success_url' => config('app.url') . '/api/payment/success?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url' => config('app.url') . '/api/payment/cancel?order_id=' . $order->id,
+            'cancel_url' => config('app.url') . '/api/payment/cancel?order_ids=' . implode(',', $orderIds),
         ]);
 
         return $session;

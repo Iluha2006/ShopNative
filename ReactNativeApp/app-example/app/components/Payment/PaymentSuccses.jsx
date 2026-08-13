@@ -12,7 +12,8 @@ const PaymentSuccess = () => {
   const navigation = useNavigation();
   const route = useRoute();
 
-  const orderId = route.params?.orderId ?? null;
+  const orderIds = route.params?.orderIds ??
+    (route.params?.orderId ? [route.params.orderId] : []);
   const total = route.params?.total ?? null;
 
   const goToHome = () => {
@@ -40,8 +41,11 @@ const PaymentSuccess = () => {
 
         <Text style={styles.title}>Оплата прошла успешно</Text>
 
-        {orderId ? (
-          <Text style={styles.subtitle}>Заказ № {orderId}</Text>
+        {orderIds.length > 0 ? (
+          <Text style={styles.subtitle}>
+            {orderIds.length > 1 ? 'Заказы № ' : 'Заказ № '}
+            {orderIds.join(', ')}
+          </Text>
         ) : null}
 
         {total ? (

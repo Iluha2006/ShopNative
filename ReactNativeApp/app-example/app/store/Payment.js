@@ -46,14 +46,14 @@ export const {
 } = PaymentSlice.actions;
 
 
-export const createPayment = (product_id, quantity, size) => async (dispatch) => {
+export const createPayment = (items) => async (dispatch) => {
   try {
     dispatch(setPaymentLoading(true));
     dispatch(clearPaymentError());
     const headers = await getAuthHeaders();
     const response = await axios.post(
       `${API_URL}/payment/create`,
-      { product_id, quantity, size },
+      { items },
       { headers }
     );
 

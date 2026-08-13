@@ -13,7 +13,7 @@ import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
 import { useDispatch, useSelector } from 'react-redux';
 import { createPayment, clearCurrentPayment } from '../../store/Payment';
-import { clearCart } from '../../store/Cart';
+import { clearCart, clearCartItems } from '../../store/Cart';
 import { getAuthHeaders } from '../../store/AuthorizationCheck';
 import { API_URL } from '../../config/api';
 
@@ -37,13 +37,16 @@ const MakingProduct = ({ navigation }) => {
       return;
     }
 
-    const item = cartItems[0];
     try {
       setPaying(true);
 
-      const paymentData = await dispatch(
-        createPayment(item.product?.id, item.quantity, item.size)
-      );
+      const items = cartItems.map((item) => ({
+        product_id: item.product?.id ?? item.product_id,
+        quantity: item.quantity || 1,
+        size: item.size,
+      }));
+
+      const paymentData = await dispatch(createPayment(items));
 
       const paymentUrl = paymentData.url;
       if (!paymentUrl) {
@@ -67,11 +70,21 @@ const MakingProduct = ({ navigation }) => {
       }
 
       if (check?.paid) {
+        const orderIds =
+          check?.orders?.map((order) => order.id) ||
+          (check?.order?.id ? [check.order.id] : paymentData?.order_ids || []);
+
         dispatch(clearCart());
         dispatch(clearCurrentPayment());
 
+        try {
+          await dispatch(clearCartItems());
+        } catch (e) {
+          // корзина на сервере уже очищена при подтверждении оплаты
+        }
+
         navigation.replace('PaymentSuccess', {
-          orderId: check?.order?.id ?? paymentData?.order_id,
+          orderIds,
           total,
         });
       } else {

@@ -19,35 +19,48 @@ class PaymentController extends Controller
 
     public function createPayment(Request $request)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-            'size' => 'nullable|string',
-        ]);
+        if ($request->has('items')) {
+            $request->validate([
+                'items' => 'required|array|min:1',
+                'items.*.product_id' => 'required|exists:products,id',
+                'items.*.quantity' => 'required|integer|min:1',
+                'items.*.size' => 'nullable|string',
+            ]);
 
-        $user = Auth::user();
-        $product = Product::findOrFail($request->product_id);
-        if ($product->quantity < $request->quantity) {
-            return response()->json([
-                'error' => 'Недостаточное количество товара на складе'
-            ], 400);
+            $items = $request->items;
+        } else {
+            $request->validate([
+                'product_id' => 'required|exists:products,id',
+                'quantity' => 'required|integer|min:1',
+                'size' => 'nullable|string',
+            ]);
+
+            $items = [[
+                'product_id' => $request->product_id,
+                'quantity' => $request->quantity,
+                'size' => $request->size,
+            ]];
         }
 
-        $order = $this->paymentServices->createOrder(
-            $user,
-            $product,
-            $request->quantity,
-            $request->size
-        );
+        $user = Auth::user();
 
+        foreach ($items as $item) {
+            $product = Product::findOrFail($item['product_id']);
+            if ($product->quantity < $item['quantity']) {
+                return response()->json([
+                    'error' => "Недостаточное количество товара «{$product->name}» на складе"
+                ], 400);
+            }
+        }
 
-        $checkout = $this->paymentServices->createCheckoutSession($order, $user);
+        $orders = $this->paymentServices->createOrders($items, $user);
+
+        $checkout = $this->paymentServices->createCheckoutSession($orders, $user);
 
         return response()->json([
             'url' => $checkout->url,
             'session_id' => $checkout->id,
-            'order_id' => $order->id,
-
+            'order_ids' => $orders->pluck('id')->all(),
         ]);
     }
 
@@ -58,23 +71,39 @@ class PaymentController extends Controller
         try {
             $session = $this->paymentServices->getSession($sessionId);
 
-            $order = Order::with('product')
-                ->find($session->metadata['order_id'] ?? null);
+            $metadata = $session->metadata ?? [];
+            $orderIds = $metadata['order_ids'] ?? ($metadata['order_id'] ?? null);
+
+            $ids = $orderIds
+                ? array_filter(array_map('trim', explode(',', (string) $orderIds)))
+                : [];
+
+            $orders = Order::with('product')
+                ->whereIn('id', $ids)
+                ->get();
 
             $paid = $session->payment_status === 'paid';
 
-            if ($order && $paid) {
-                $order->markAsCompleted();
+            if ($paid) {
+                foreach ($orders as $order) {
+                    $order->markAsCompleted();
+                }
+
+                $userId = $metadata['user_id'] ?? ($orders->first()->user_id ?? null);
+
+                if ($userId) {
+                    \App\Models\Cart::where('user_id', $userId)->delete();
+                }
             }
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'paid' => $paid,
-                    'order' => $order,
+                    'orders' => $orders,
                 ]);
             }
 
-            return $this->successPage($order, $paid);
+            return $this->successPage($orders->first(), $paid);
         } catch (\Exception $e) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -88,12 +117,13 @@ class PaymentController extends Controller
 
     public function cancelPayment(Request $request)
     {
-        $orderId = $request->get('order_id');
-        $order = Order::find($orderId);
+        $orderIds = $request->get('order_ids') ?? $request->get('order_id');
 
-        if ($order) {
-            $order->markAsCancelled();
-        }
+        $ids = $orderIds
+            ? array_filter(array_map('trim', explode(',', (string) $orderIds)))
+            : [];
+
+        Order::whereIn('id', $ids)->get()->each->markAsCancelled();
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Платеж отменен']);
