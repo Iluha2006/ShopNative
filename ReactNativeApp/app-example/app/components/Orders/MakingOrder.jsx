@@ -44,6 +44,7 @@ const MakingProduct = ({ navigation }) => {
         product_id: item.product?.id ?? item.product_id,
         quantity: item.quantity || 1,
         size: item.size,
+        selected_image: item.selected_image || item.product?.imageUrl,
       }));
 
       const paymentData = await dispatch(createPayment(items));

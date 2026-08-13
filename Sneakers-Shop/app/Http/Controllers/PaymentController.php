@@ -25,6 +25,7 @@ class PaymentController extends Controller
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.quantity' => 'required|integer|min:1',
                 'items.*.size' => 'nullable|string',
+                'items.*.selected_image' => 'nullable|string',
             ]);
 
             $items = $request->items;
@@ -33,12 +34,14 @@ class PaymentController extends Controller
                 'product_id' => 'required|exists:products,id',
                 'quantity' => 'required|integer|min:1',
                 'size' => 'nullable|string',
+                'selected_image' => 'nullable|string',
             ]);
 
             $items = [[
                 'product_id' => $request->product_id,
                 'quantity' => $request->quantity,
                 'size' => $request->size,
+                'selected_image' => $request->selected_image,
             ]];
         }
 

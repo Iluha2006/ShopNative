@@ -34,6 +34,7 @@ class PaymentServices
                 'product_id' => $product->id,
                 'quantity' => $item['quantity'],
                 'selected_size' => $item['size'] ?? null,
+                'selected_image' => $item['selected_image'] ?? null,
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
             ]));

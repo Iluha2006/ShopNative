@@ -85,7 +85,7 @@ const OrdersHistory = () => {
   const renderOrder = ({ item }) => {
     const product = item.product || {};
 
-    const imageUrl = product.imageUrl || product.image_url || null;
+    const imageUrl = item.selected_image || product.imageUrl || product.image_url || null;
 
     return (
       <TouchableOpacity
@@ -99,7 +99,8 @@ const OrdersHistory = () => {
         {imageUrl ? (
           <Image
             source={{ uri: imageUrl }}
-            style={styles.orderImage}
+             style={styles.orderImage}
+
             resizeMode="contain"
           />
         ) : (
@@ -201,9 +202,9 @@ const styles = StyleSheet.create({
   },
   orderImage: {
     width: 120,
-    height: 90,
+    height: 150,
     borderRadius: 10,
-    backgroundColor: '#f0f0f0',
+  
     marginRight: 12,
   },
   orderImagePlaceholder: {
@@ -240,6 +241,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 6,
   },
+  
   status: {
     fontSize: 13,
     fontWeight: '600',

@@ -12,6 +12,7 @@ class Order extends Model
         'product_id',
         'quantity',
         'selected_size',
+        'selected_image',
         'total_amount',
         'status',
 
